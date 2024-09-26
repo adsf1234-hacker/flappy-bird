@@ -24,8 +24,8 @@ function update() {
     velocityY += gravity;
     bird.rotation = Math.min(MAX_ROTATION_SPEED, bird.rotation + velocityY / 50); // Limit rotation speed
     
-    // Only apply rotation when falling below this threshold
-    if (velocityY >= ROTATION_THRESHOLD) {
+    // Apply rotation only when jumping
+    if (velocityY < 0) {
         bird.y = Math.max(bird.y + velocityY, 0);
         
         // Apply rotation
@@ -35,30 +35,27 @@ function update() {
         context.drawImage(birdImg, -bird.width / 2, -bird.height / 2, bird.width, bird.height);
         context.restore();
     } else {
-        // When not falling, reset rotation and position
+        // When falling, reset rotation and position
         bird.rotation = 0;
         bird.y = Math.max(bird.y + velocityY, 0);
     }
 
-    if (bird.y > board.height) {
-        gameOver = true;
-    }
-
-    //pipes
+    // Check collision with pipes
     for (let i = 0; i < pipeArray.length; i++) {
         let pipe = pipeArray[i];
         pipe.x += velocityX;
+        
+        // Draw pipes
         context.drawImage(pipe.img, pipe.x, pipe.y, pipe.width, pipe.height);
 
+        // Check collision
         if (!pipe.passed && bird.x > pipe.x + pipe.width) {
             score += 0.5;
             pipe.passed = true;
         }
 
-        // Check collision only when the bird is below the top pipe
-        if (bird.y >= pipe.y && detectCollision(bird, pipe)) {
-            gameOver = false; // Don't die immediately, give player chance to recover
-            velocityY = -10; // Give a small boost upwards
+        if (detectCollision(bird, pipe)) {
+            gameOver = true;
         }
     }
 
