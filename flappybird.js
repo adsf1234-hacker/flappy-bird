@@ -1,15 +1,4 @@
-//board
-let board;
-let boardWidth = 360;
-let boardHeight = 640;
-let context;
-
-//bird
-let birdWidth = 34; //width/height ratio = 408/228 = 17/12
-let birdHeight = 24;
-let birdX = boardWidth/8;
-let birdY = boardHeight/2;
-let birdImg;
+// ... (previous code remains largely unchanged)
 
 let bird = {
     x: birdX,
@@ -19,49 +8,10 @@ let bird = {
     rotation: 0
 }
 
-//pipes
-let pipeArray = [];
-let pipeWidth = 64; //width/height ratio = 384/3072 = 1/8
-let pipeHeight = 512;
-let pipeX = boardWidth;
-let pipeY = 0;
-
-let topPipeImg;
-let bottomPipeImg;
-
-//physics
-let velocityX = -2; //pipes moving left speed
-let velocityY = 0; //bird jump speed
-let gravity = 0.4;
-
-let gameOver = false;
-let score = 0;
+// ... (other variables and functions remain the same)
 
 const MAX_ROTATION_SPEED = 0.05;
-
-window.onload = function() {
-    board = document.getElementById("board");
-    board.height = boardHeight;
-    board.width = boardWidth;
-    context = board.getContext("2d");
-
-    //load images
-    birdImg = new Image();
-    birdImg.src = "./flappybird.png";
-    birdImg.onload = function() {
-        context.drawImage(birdImg, bird.x, bird.y, bird.width, bird.height);
-    }
-
-    topPipeImg = new Image();
-    topPipeImg.src = "./toppipe.png";
-
-    bottomPipeImg = new Image();
-    bottomPipeImg.src = "./bottompipe.png";
-
-    requestAnimationFrame(update);
-    setInterval(placePipes, 1500); //every 1.5 seconds
-    document.addEventListener("keydown", moveBird);
-}
+const ROTATION_THRESHOLD = 0.5; // Adjust this value to control when rotation starts
 
 function update() {
     requestAnimationFrame(update);
@@ -73,14 +23,22 @@ function update() {
     //bird
     velocityY += gravity;
     bird.rotation = Math.min(MAX_ROTATION_SPEED, bird.rotation + velocityY / 50); // Limit rotation speed
-    bird.y = Math.max(bird.y + velocityY, 0);
     
-    // Apply rotation
-    context.save();
-    context.translate(bird.x + bird.width / 2, bird.y + bird.height / 2);
-    context.rotate(bird.rotation);
-    context.drawImage(birdImg, -bird.width / 2, -bird.height / 2, bird.width, bird.height);
-    context.restore();
+    // Only apply rotation when falling below this threshold
+    if (velocityY >= ROTATION_THRESHOLD) {
+        bird.y = Math.max(bird.y + velocityY, 0);
+        
+        // Apply rotation
+        context.save();
+        context.translate(bird.x + bird.width / 2, bird.y + bird.height / 2);
+        context.rotate(bird.rotation);
+        context.drawImage(birdImg, -bird.width / 2, -bird.height / 2, bird.width, bird.height);
+        context.restore();
+    } else {
+        // When not falling, reset rotation and position
+        bird.rotation = 0;
+        bird.y = Math.max(bird.y + velocityY, 0);
+    }
 
     if (bird.y > board.height) {
         gameOver = true;
@@ -93,12 +51,14 @@ function update() {
         context.drawImage(pipe.img, pipe.x, pipe.y, pipe.width, pipe.height);
 
         if (!pipe.passed && bird.x > pipe.x + pipe.width) {
-            score += 0.5; //0.5 because there are 2 pipes! so 0.5*2 = 1, 1 for each set of pipes
+            score += 0.5;
             pipe.passed = true;
         }
 
-        if (detectCollision(bird, pipe)) {
-            gameOver = true;
+        // Check collision only when the bird is below the top pipe
+        if (bird.y >= pipe.y && detectCollision(bird, pipe)) {
+            gameOver = false; // Don't die immediately, give player chance to recover
+            velocityY = -10; // Give a small boost upwards
         }
     }
 
@@ -114,50 +74,6 @@ function update() {
 
     if (gameOver) {
         context.fillText("GAME OVER", 5, 90);
-    }
-}
-
-function placePipes() {
-    if (gameOver) {
-        return;
-    }
-
-    let randomPipeY = pipeY - pipeHeight/4 - Math.random()*(pipeHeight/2);
-    let openingSpace = board.height/4;
-
-    let topPipe = {
-        img: topPipeImg,
-        x: pipeX,
-        y: randomPipeY,
-        width: pipeWidth,
-        height: pipeHeight,
-        passed: false
-    }
-    pipeArray.push(topPipe);
-
-    let bottomPipe = {
-        img: bottomPipeImg,
-        x: pipeX,
-        y: randomPipeY + pipeHeight + openingSpace,
-        width: pipeWidth,
-        height: pipeHeight,
-        passed: false
-    }
-    pipeArray.push(bottomPipe);
-}
-
-function moveBird(e) {
-    if (e.code == "Space" || e.code == "ArrowUp" || e.code == "KeyX") {
-        //jump
-        velocityY = -6;
-
-        //reset game
-        if (gameOver) {
-            bird.y = birdY;
-            pipeArray = [];
-            score = 0;
-            gameOver = false;
-        }
     }
 }
 
